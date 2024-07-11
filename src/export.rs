@@ -1,4 +1,5 @@
-use anyhow::{bail, Context, Result};
+use crate::language::Language;
+use anyhow::{Context, Result};
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::Path;
@@ -12,7 +13,7 @@ use walkdir::WalkDir;
 ///
 /// # Arguments
 ///
-/// * `lang` - A string slice that holds the language identifier (e.g., "rust", "python")
+/// * `lang` - A `Language` enum representing the programming language
 /// * `output` - An optional string slice that holds the path to the output file
 /// * `path` - A string slice that holds the path to the directory to search for files
 ///
@@ -23,16 +24,9 @@ use walkdir::WalkDir;
 /// # Errors
 ///
 /// This function will return an error if:
-/// * The specified language is not supported
 /// * There are issues reading the input files
 /// * There are issues writing to the output (either stdout or file)
-pub fn export_files(lang: &str, output: Option<&str>, path: &str) -> Result<()> {
-    let extension = match lang {
-        "rust" => "rs",
-        "python" => "py",
-        _ => bail!("Unsupported language: {}", lang),
-    };
-
+pub fn export_files(lang: Language, output: Option<&str>, path: &str) -> Result<()> {
     let mut writer: Box<dyn Write> = match output {
         Some(file_path) => Box::new(
             File::create(file_path)
@@ -46,7 +40,7 @@ pub fn export_files(lang: &str, output: Option<&str>, path: &str) -> Result<()> 
             && entry
                 .path()
                 .extension()
-                .map_or(false, |ext| ext == extension)
+                .map_or(false, |ext| ext == lang.extension())
         {
             append_file_to_output(&mut writer, entry.path(), lang)?;
         }
@@ -64,7 +58,7 @@ pub fn export_files(lang: &str, output: Option<&str>, path: &str) -> Result<()> 
 ///
 /// * `writer` - A mutable reference to something that implements `Write`
 /// * `file_path` - A reference to the `Path` of the file to be appended
-/// * `lang` - A string slice that holds the language identifier
+/// * `lang` - A `Language` enum representing the programming language
 ///
 /// # Returns
 ///
@@ -75,7 +69,7 @@ pub fn export_files(lang: &str, output: Option<&str>, path: &str) -> Result<()> 
 /// This function will return an error if:
 /// * There are issues reading the input file
 /// * There are issues writing to the output
-fn append_file_to_output(writer: &mut dyn Write, file_path: &Path, lang: &str) -> Result<()> {
+fn append_file_to_output(writer: &mut dyn Write, file_path: &Path, lang: Language) -> Result<()> {
     let file_content = fs::read_to_string(file_path)
         .with_context(|| format!("Failed to read file: {}", file_path.display()))?;
 
@@ -95,18 +89,13 @@ fn append_file_to_output(writer: &mut dyn Write, file_path: &Path, lang: &str) -
 /// # Arguments
 ///
 /// * `file_path` - A reference to the `Path` of the file
-/// * `lang` - A string slice that holds the language identifier
+/// * `lang` - A `Language` enum representing the programming language
 ///
 /// # Returns
 ///
 /// Returns a `String` containing the generated header.
-fn generate_file_header(file_path: &Path, lang: &str) -> String {
-    let comment_symbol = match lang {
-        "rust" => "//",
-        "python" => "#",
-        _ => "#",
-    };
-
+fn generate_file_header(file_path: &Path, lang: Language) -> String {
+    let comment_symbol = lang.comment_symbol();
     let separator = format!("{} {}", comment_symbol, "=".repeat(60));
     let file_name = file_path.display();
 
@@ -115,4 +104,3 @@ fn generate_file_header(file_path: &Path, lang: &str) -> String {
         separator, comment_symbol, file_name, separator
     )
 }
-

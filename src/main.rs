@@ -1,9 +1,11 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use export::export_files;
+use language::Language;
 use title::add_titles;
 
 mod export;
+mod language;
 mod title;
 
 /// Represents the command-line interface for the repolog tool.
@@ -19,9 +21,9 @@ struct Cli {
 enum Commands {
     /// Adds titles to files of a specified language in a given directory.
     Title {
-        /// The programming language to process (e.g., "rust", "python")
+        /// The programming language to process
         #[clap(short, long)]
-        lang: String,
+        lang: Language,
 
         /// The path to the directory to process (default: current directory)
         #[clap(default_value = ".")]
@@ -29,9 +31,9 @@ enum Commands {
     },
     /// Exports files of a specified language from a given directory.
     Export {
-        /// The programming language to process (e.g., "rust", "python")
+        /// The programming language to process
         #[clap(short, long)]
-        lang: String,
+        lang: Language,
 
         /// The path to the output file (optional, defaults to stdout if not provided)
         #[clap(short, long)]
@@ -53,11 +55,12 @@ enum Commands {
 /// This function will return an error if:
 /// * There are issues parsing the command-line arguments
 /// * The executed subcommand encounters an error
+/// * An unsupported language is specified
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Title { lang, path } => add_titles(&lang, &path),
-        Commands::Export { lang, output, path } => export_files(&lang, output.as_deref(), &path),
+        Commands::Title { lang, path } => add_titles(lang, &path),
+        Commands::Export { lang, output, path } => export_files(lang, output.as_deref(), &path),
     }
 }

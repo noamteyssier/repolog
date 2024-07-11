@@ -1,4 +1,5 @@
-use anyhow::{bail, Result};
+use crate::language::Language;
+use anyhow::Result;
 use regex::Regex;
 use std::fs;
 use std::io::{Read, Write};
@@ -13,7 +14,7 @@ use walkdir::WalkDir;
 ///
 /// # Arguments
 ///
-/// * `lang` - A string slice that holds the language identifier (e.g., "rust", "python")
+/// * `lang` - A `Language` enum representing the programming language
 /// * `path` - A string slice that holds the path to the directory to search for files
 ///
 /// # Returns
@@ -23,22 +24,15 @@ use walkdir::WalkDir;
 /// # Errors
 ///
 /// This function will return an error if:
-/// * The specified language is not supported
 /// * There are issues reading or writing to the files
 /// * There are issues walking the directory structure
-pub fn add_titles(lang: &str, path: &str) -> Result<()> {
-    let extension = match lang {
-        "rust" => "rs",
-        "python" => "py",
-        _ => bail!("Unsupported language: {}", lang),
-    };
-
+pub fn add_titles(lang: Language, path: &str) -> Result<()> {
     for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
         if entry.file_type().is_file()
             && entry
                 .path()
                 .extension()
-                .map_or(false, |ext| ext == extension)
+                .map_or(false, |ext| ext == lang.extension())
         {
             add_title_to_file(entry.path(), lang)?;
         }
@@ -55,7 +49,7 @@ pub fn add_titles(lang: &str, path: &str) -> Result<()> {
 /// # Arguments
 ///
 /// * `file_path` - A reference to the `Path` of the file to be processed
-/// * `lang` - A string slice that holds the language identifier
+/// * `lang` - A `Language` enum representing the programming language
 ///
 /// # Returns
 ///
@@ -66,7 +60,7 @@ pub fn add_titles(lang: &str, path: &str) -> Result<()> {
 /// This function will return an error if:
 /// * There are issues reading from or writing to the file
 /// * There are issues generating the title
-fn add_title_to_file(file_path: &Path, lang: &str) -> Result<()> {
+fn add_title_to_file(file_path: &Path, lang: Language) -> Result<()> {
     let mut content = String::new();
     fs::File::open(file_path)?.read_to_string(&mut content)?;
 
@@ -88,21 +82,17 @@ fn add_title_to_file(file_path: &Path, lang: &str) -> Result<()> {
 /// # Arguments
 ///
 /// * `content` - A string slice containing the file content to check
-/// * `lang` - A string slice that holds the language identifier
+/// * `lang` - A `Language` enum representing the programming language
 ///
 /// # Returns
 ///
 /// Returns `true` if the content already has a title, `false` otherwise.
-fn has_title(content: &str, lang: &str) -> bool {
-    let comment_pattern = match lang {
-        "rust" => r"^//",
-        "python" => r"^#",
-        _ => return false,
-    };
+fn has_title(content: &str, lang: Language) -> bool {
+    let comment_pattern = lang.comment_symbol();
 
     let re = Regex::new(&format!(
-        r"{}.*[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)+",
-        comment_pattern
+        r"^{}.*[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)+",
+        regex::escape(comment_pattern)
     ))
     .unwrap();
     re.is_match(content)
@@ -116,7 +106,7 @@ fn has_title(content: &str, lang: &str) -> bool {
 /// # Arguments
 ///
 /// * `file_path` - A reference to the `Path` of the file
-/// * `lang` - A string slice that holds the language identifier
+/// * `lang` - A `Language` enum representing the programming language
 ///
 /// # Returns
 ///
@@ -127,12 +117,8 @@ fn has_title(content: &str, lang: &str) -> bool {
 ///
 /// This function will return an error if:
 /// * The file path cannot be converted to a valid UTF-8 string
-fn generate_title(file_path: &Path, lang: &str) -> Result<String> {
-    let comment_symbol = match lang {
-        "rust" => "//",
-        "python" => "#",
-        _ => "#",
-    };
+fn generate_title(file_path: &Path, lang: Language) -> Result<String> {
+    let comment_symbol = lang.comment_symbol();
 
     let base_path = Path::new(".");
     let relative_path = file_path.strip_prefix(base_path).unwrap_or(file_path);
