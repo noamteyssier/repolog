@@ -2,6 +2,14 @@
 name = "repolog"
 version = "0.1.0"
 edition = "2021"
+authors = ["Noam Teyssier"]
+description = "A tool for adding title comments to files and exporting files of specific languages from a project."
+readme = "README.md"
+homepage = "https://github.com/noamteyssier/repolog"
+repository = "https://github.com/noamteyssier/repolog"
+license = "MIT"
+keywords = ["code", "organization", "export", "title", "comments"]
+categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
 anyhow = "1.0.86"
@@ -9,3 +17,8 @@ clap = { version = "4.5.9", features = ["derive"] }
 regex = "1.10.5"
 serde = { version = "1.0.204", features = ["derive"] }
 walkdir = "2.5.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
